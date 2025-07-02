@@ -10,26 +10,37 @@ import Contact from './pages/Contact';
 import Careers from './pages/Careers';
 import PortKillerLanding from './components/product/PortKillerLanding';
 import OorbFormsApp from './components/forms/OorbFormsApp';
+import FormRenderer from './components/forms/FormRenderer';
 
 const App = () => {
   return (
     <div className="min-h-screen bg-white">
-      <Navbar />
-      <main>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/solutions" element={<Solutions />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/careers" element={<Careers />} />
+      <Routes>
+        {/* Public form route (no navbar/footer) */}
+        <Route path="/form/:shareUrl" element={<FormRenderer />} />
+        
+        {/* Main app routes (with navbar/footer) */}
+        <Route path="/*" element={
+          <>
+            <Navbar />
+            <main>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/solutions" element={<Solutions />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/careers" element={<Careers />} />
 
-          {/* Products */}
-          <Route path="/port-killer" element={<PortKillerLanding />} />
-          <Route path="/oorb-forms" element={<OorbFormsApp />} />
-        </Routes>
-      </main>
-      <Footer />
+                {/* Products */}
+                <Route path="/port-killer" element={<PortKillerLanding />} />
+                <Route path="/oorb-forms" element={<OorbFormsApp />} />
+              </Routes>
+            </main>
+            <Footer />
+          </>
+        } />
+      </Routes>
     </div>
   );
 };

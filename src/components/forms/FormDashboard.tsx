@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -12,69 +12,86 @@ import {
   BarChart3,
   Users,
   Calendar,
-  FileText
+  FileText,
+  Download,
+  Send
 } from 'lucide-react';
+import { formAPI, exportAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 interface FormItem {
-  id: string;
+  _id: string;
   title: string;
   description: string;
   responses: number;
   views: number;
   createdAt: string;
   status: 'active' | 'draft' | 'closed';
-  lastResponse: string;
+  shareUrl?: string;
 }
 
-const FormDashboard: React.FC<{ onCreateForm: () => void; onEditForm: (id: string) => void }> = ({ 
+interface FormDashboardProps {
+  onCreateForm: () => void;
+  onEditForm: (id: string) => void;
+  onViewResponses: (id: string) => void;
+}
+
+const FormDashboard: React.FC<FormDashboardProps> = ({ 
   onCreateForm, 
-  onEditForm 
+  onEditForm,
+  onViewResponses 
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'draft' | 'closed'>('all');
+  const [forms, setForms] = useState<FormItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const forms: FormItem[] = [
-    {
-      id: '1',
-      title: 'Customer Feedback Survey',
-      description: 'Collect feedback from our customers about their experience',
-      responses: 247,
-      views: 1205,
-      createdAt: '2024-01-15',
-      status: 'active',
-      lastResponse: '2 hours ago'
-    },
-    {
-      id: '2',
-      title: 'Event Registration Form',
-      description: 'Registration form for the annual company conference',
-      responses: 89,
-      views: 456,
-      createdAt: '2024-01-10',
-      status: 'active',
-      lastResponse: '1 day ago'
-    },
-    {
-      id: '3',
-      title: 'Job Application Form',
-      description: 'Application form for open positions',
-      responses: 156,
-      views: 892,
-      createdAt: '2024-01-05',
-      status: 'active',
-      lastResponse: '3 hours ago'
-    },
-    {
-      id: '4',
-      title: 'Product Survey Draft',
-      description: 'Survey about new product features',
-      responses: 0,
-      views: 12,
-      createdAt: '2024-01-20',
-      status: 'draft',
-      lastResponse: 'Never'
+  useEffect(() => {
+    loadForms();
+  }, []);
+
+  const loadForms = async () => {
+    try {
+      const response = await formAPI.getForms();
+      setForms(response.data);
+    } catch (error) {
+      toast.error('Failed to load forms');
+      console.error('Error loading forms:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const deleteForm = async (formId: string) => {
+    if (!confirm('Are you sure you want to delete this form? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await formAPI.deleteForm(formId);
+      setForms(forms.filter(form => form._id !== formId));
+      toast.success('Form deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete form');
+      console.error('Error deleting form:', error);
+    }
+  };
+
+  const copyShareLink = (shareUrl: string) => {
+    const shareLink = `${window.location.origin}/form/${shareUrl}`;
+    navigator.clipboard.writeText(shareLink);
+    toast.success('Share link copied to clipboard!');
+  };
+
+  const downloadExcel = (formId: string) => {
+    exportAPI.downloadExcel(formId);
+    toast.success('Excel download started');
+  };
+
+  const downloadCSV = (formId: string) => {
+    exportAPI.downloadCSV(formId);
+    toast.success('CSV download started');
+  };
 
   const filteredForms = forms.filter(form => {
     const matchesSearch = form.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -85,7 +102,7 @@ const FormDashboard: React.FC<{ onCreateForm: () => void; onEditForm: (id: strin
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
+      case 'published': return 'bg-green-100 text-green-800';
       case 'draft': return 'bg-yellow-100 text-yellow-800';
       case 'closed': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -94,7 +111,18 @@ const FormDashboard: React.FC<{ onCreateForm: () => void; onEditForm: (id: strin
 
   const totalResponses = forms.reduce((sum, form) => sum + form.responses, 0);
   const totalViews = forms.reduce((sum, form) => sum + form.views, 0);
-  const activeForms = forms.filter(form => form.status === 'active').length;
+  const activeForms = forms.filter(form => form.status === 'published').length;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading forms...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -159,10 +187,10 @@ const FormDashboard: React.FC<{ onCreateForm: () => void; onEditForm: (id: strin
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-orange-600" />
+                <Send className="w-6 h-6 text-orange-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active Forms</p>
+                <p className="text-sm font-medium text-gray-600">Published Forms</p>
                 <p className="text-2xl font-bold text-gray-900">{activeForms}</p>
               </div>
             </div>
@@ -192,7 +220,7 @@ const FormDashboard: React.FC<{ onCreateForm: () => void; onEditForm: (id: strin
                 className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">All Status</option>
-                <option value="active">Active</option>
+                <option value="published">Published</option>
                 <option value="draft">Draft</option>
                 <option value="closed">Closed</option>
               </select>
@@ -208,7 +236,7 @@ const FormDashboard: React.FC<{ onCreateForm: () => void; onEditForm: (id: strin
           
           <div className="divide-y divide-gray-200">
             {filteredForms.map((form) => (
-              <div key={form.id} className="p-6 hover:bg-gray-50 transition-colors">
+              <div key={form._id} className="p-6 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
@@ -230,39 +258,66 @@ const FormDashboard: React.FC<{ onCreateForm: () => void; onEditForm: (id: strin
                       </div>
                       <div className="flex items-center space-x-1">
                         <Calendar className="w-4 h-4" />
-                        <span>Created {form.createdAt}</span>
-                      </div>
-                      <div>
-                        Last response: {form.lastResponse}
+                        <span>Created {new Date(form.createdAt).toLocaleDateString()}</span>
                       </div>
                     </div>
                   </div>
                   
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => onEditForm(form.id)}
+                      onClick={() => onEditForm(form._id)}
                       className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
                       title="Edit form"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
+                    
                     <button
+                      onClick={() => onViewResponses(form._id)}
                       className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
                       title="View responses"
                     >
                       <BarChart3 className="w-4 h-4" />
                     </button>
+                    
+                    {form.status === 'published' && form.shareUrl && (
+                      <button
+                        onClick={() => copyShareLink(form.shareUrl!)}
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
+                        title="Copy share link"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    
+                    {form.responses > 0 && (
+                      <div className="relative group">
+                        <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md">
+                          <Download className="w-4 h-4" />
+                        </button>
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                          <button
+                            onClick={() => downloadExcel(form._id)}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            Download Excel
+                          </button>
+                          <button
+                            onClick={() => downloadCSV(form._id)}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            Download CSV
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
                     <button
-                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
-                      title="Share form"
+                      onClick={() => deleteForm(form._id)}
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md"
+                      title="Delete form"
                     >
-                      <Share2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md"
-                      title="More options"
-                    >
-                      <MoreVertical className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

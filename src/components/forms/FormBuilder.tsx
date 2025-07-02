@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { 
   Type, 
@@ -15,8 +15,12 @@ import {
   Settings,
   Eye,
   Save,
-  Share2
+  Share2,
+  ArrowLeft,
+  Send
 } from 'lucide-react';
+import { formAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 interface FormField {
   id: string;
@@ -28,22 +32,31 @@ interface FormField {
 }
 
 interface Form {
-  id: string;
+  _id?: string;
   title: string;
   description: string;
   fields: FormField[];
+  status: 'draft' | 'published' | 'closed';
+  shareUrl?: string;
 }
 
-const FormBuilder: React.FC = () => {
+interface FormBuilderProps {
+  formId?: string;
+  onBack: () => void;
+}
+
+const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onBack }) => {
   const [form, setForm] = useState<Form>({
-    id: '1',
     title: 'Untitled Form',
     description: 'Form description',
-    fields: []
+    fields: [],
+    status: 'draft'
   });
   
   const [selectedField, setSelectedField] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const fieldTypes = [
     { type: 'text', label: 'Text Input', icon: Type },
@@ -57,6 +70,23 @@ const FormBuilder: React.FC = () => {
     { type: 'file', label: 'File Upload', icon: Upload },
     { type: 'rating', label: 'Rating', icon: Star }
   ];
+
+  // Load form if editing
+  useEffect(() => {
+    if (formId) {
+      loadForm();
+    }
+  }, [formId]);
+
+  const loadForm = async () => {
+    try {
+      const response = await formAPI.getForm(formId!);
+      setForm(response.data);
+    } catch (error) {
+      toast.error('Failed to load form');
+      console.error('Error loading form:', error);
+    }
+  };
 
   const addField = (type: FormField['type']) => {
     const newField: FormField = {
@@ -100,6 +130,62 @@ const FormBuilder: React.FC = () => {
     items.splice(result.destination.index, 0, reorderedItem);
 
     setForm(prev => ({ ...prev, fields: items }));
+  };
+
+  const saveForm = async () => {
+    if (!form.title.trim()) {
+      toast.error('Please enter a form title');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (form._id) {
+        await formAPI.updateForm(form._id, form);
+        toast.success('Form saved successfully');
+      } else {
+        const response = await formAPI.createForm(form);
+        setForm(response.data);
+        toast.success('Form created successfully');
+      }
+    } catch (error) {
+      toast.error('Failed to save form');
+      console.error('Error saving form:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const publishForm = async () => {
+    if (!form._id) {
+      toast.error('Please save the form first');
+      return;
+    }
+
+    if (form.fields.length === 0) {
+      toast.error('Please add at least one field');
+      return;
+    }
+
+    setPublishing(true);
+    try {
+      const response = await formAPI.publishForm(form._id);
+      setForm(response.data);
+      toast.success('Form published successfully!');
+    } catch (error) {
+      toast.error('Failed to publish form');
+      console.error('Error publishing form:', error);
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const copyShareLink = () => {
+    if (form.shareUrl) {
+      const shareLink = `${window.location.origin}/form/${form.shareUrl}`;
+      navigator.clipboard.writeText(shareLink);
+      toast.success('Share link copied to clipboard!');
+    }
   };
 
   const renderFieldPreview = (field: FormField) => {
@@ -344,6 +430,16 @@ const FormBuilder: React.FC = () => {
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar - Field Types */}
       <div className="w-64 bg-white border-r border-gray-200 p-4">
+        <div className="mb-4">
+          <button
+            onClick={onBack}
+            className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to Dashboard</span>
+          </button>
+        </div>
+        
         <h2 className="text-lg font-semibold mb-4">Add Fields</h2>
         <div className="space-y-2">
           {fieldTypes.map((fieldType) => {
@@ -374,6 +470,13 @@ const FormBuilder: React.FC = () => {
                 onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))}
                 className="text-xl font-semibold bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
               />
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                form.status === 'published' ? 'bg-green-100 text-green-800' :
+                form.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {form.status}
+              </span>
             </div>
             <div className="flex items-center space-x-2">
               <button
@@ -383,14 +486,31 @@ const FormBuilder: React.FC = () => {
                 <Eye className="w-4 h-4" />
                 <span>Preview</span>
               </button>
-              <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+              <button 
+                onClick={saveForm}
+                disabled={saving}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
                 <Save className="w-4 h-4" />
-                <span>Save</span>
+                <span>{saving ? 'Saving...' : 'Save'}</span>
               </button>
-              <button className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
-                <Share2 className="w-4 h-4" />
-                <span>Share</span>
+              <button 
+                onClick={publishForm}
+                disabled={publishing || !form._id}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+              >
+                <Send className="w-4 h-4" />
+                <span>{publishing ? 'Publishing...' : 'Publish'}</span>
               </button>
+              {form.status === 'published' && form.shareUrl && (
+                <button
+                  onClick={copyShareLink}
+                  className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>Share</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

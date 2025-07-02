@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { Toaster } from 'react-hot-toast';
 import FormDashboard from './FormDashboard';
 import FormBuilder from './FormBuilder';
+import ResponseViewer from './ResponseViewer';
 
 type View = 'dashboard' | 'builder' | 'responses';
 
@@ -18,31 +20,83 @@ const OorbFormsApp: React.FC = () => {
     setCurrentView('builder');
   };
 
+  const handleViewResponses = (formId: string) => {
+    setCurrentFormId(formId);
+    setCurrentView('responses');
+  };
+
   const handleBackToDashboard = () => {
     setCurrentView('dashboard');
     setCurrentFormId(null);
   };
 
-  switch (currentView) {
-    case 'dashboard':
-      return (
-        <FormDashboard 
-          onCreateForm={handleCreateForm}
-          onEditForm={handleEditForm}
-        />
-      );
-    
-    case 'builder':
-      return <FormBuilder />;
-    
-    default:
-      return (
-        <FormDashboard 
-          onCreateForm={handleCreateForm}
-          onEditForm={handleEditForm}
-        />
-      );
-  }
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return (
+          <FormDashboard 
+            onCreateForm={handleCreateForm}
+            onEditForm={handleEditForm}
+            onViewResponses={handleViewResponses}
+          />
+        );
+      
+      case 'builder':
+        return (
+          <FormBuilder 
+            formId={currentFormId || undefined}
+            onBack={handleBackToDashboard}
+          />
+        );
+      
+      case 'responses':
+        return currentFormId ? (
+          <ResponseViewer 
+            formId={currentFormId}
+            onBack={handleBackToDashboard}
+          />
+        ) : null;
+      
+      default:
+        return (
+          <FormDashboard 
+            onCreateForm={handleCreateForm}
+            onEditForm={handleEditForm}
+            onViewResponses={handleViewResponses}
+          />
+        );
+    }
+  };
+
+  return (
+    <>
+      {renderCurrentView()}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            iconTheme: {
+              primary: '#4ade80',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            duration: 4000,
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
+    </>
+  );
 };
 
 export default OorbFormsApp;

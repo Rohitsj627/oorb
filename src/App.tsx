@@ -9,6 +9,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Careers from './pages/Careers';
 import PortKillerLanding from './components/product/PortKillerLanding';
+import OorbFormsLanding from './components/product/OorbFormsLanding';
 
 const App = () => {
   return (
@@ -23,8 +24,9 @@ const App = () => {
           <Route path="/contact" element={<Contact />} />
           <Route path="/careers" element={<Careers />} />
 
-          //products
+          {/* Products */}
           <Route path="/port-killer" element={<PortKillerLanding />} />
+          <Route path="/oorb-forms" element={<OorbFormsLanding />} />
         </Routes>
       </main>
       <Footer />

@@ -8,9 +8,8 @@ type NavItem = {
   name: string;
   link: string;
   category?: string;
-  description?: string; // 👈 Add this line
+  description?: string;
 };
-
 
 type CategoryFilter = {
   name: string;
@@ -20,7 +19,7 @@ type CategoryFilter = {
 type DropdownData = {
   title: string;
   categories: { title: string; filters: CategoryFilter[] }[];
-  featured: NavItem[]; // Updated to use NavItem with category
+  featured: NavItem[];
 };
 
 type MainNavItem =
@@ -76,7 +75,8 @@ const navigationData: Record<'solutions' | 'products', DropdownData> = {
         filters: [
           { name: 'Developer Tools', filter: 'developer' },
           { name: 'Frontend Libraries', filter: 'frontend' },
-          { name: 'Backend Services', filter: 'backend' }
+          { name: 'Backend Services', filter: 'backend' },
+          { name: 'Form Builders', filter: 'forms' }
         ]
       }
     ],
@@ -86,6 +86,12 @@ const navigationData: Record<'solutions' | 'products', DropdownData> = {
         link: '/port-killer',
         category: 'developer',
         description: 'One-click tool to free Windows ports instantly.'
+      },
+      {
+        name: 'OORB Forms',
+        link: '/oorb-forms',
+        category: 'forms',
+        description: 'Beautiful form builder with advanced analytics.'
       },
       {
         name: 'Animation Library',

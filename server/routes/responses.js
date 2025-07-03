@@ -1,12 +1,12 @@
 import express from 'express';
 import Response from '../models/Response.js';
 import Form from '../models/Form.js';
-import nodemailer from 'nodemailer';
+import { createTransport } from 'nodemailer';
 
 const router = express.Router();
 
 // Email transporter setup
-const transporter = nodemailer.createTransporter({
+const transporter = createTransport({
   host: process.env.EMAIL_HOST,
   port: process.env.EMAIL_PORT,
   secure: false,
